@@ -16,22 +16,19 @@ import torchvision.transforms.functional as TF
 from copy import deepcopy
 import itertools
 from matplotlib import pyplot as plt
-from GNN.discretization import *
-from GNN.tools import (
+from tools import (
     calculate_area_under_curve,
     under_prediction_score,
     over_prediction_score,
     iou_score,
     evaluate_metrics,
     calculate_ic95,
+    check_and_create_path,
+    save_object,
+    read_object,
 )
 from GNN.config import graph_id_index, departement_index
 from sklearn.metrics import f1_score, jaccard_score
-
-import dgl
-
-from GNN.graph_builder import *
-from GNN.tools import check_and_create_path, save_object, read_object
 
 from tqdm import tqdm
 
@@ -90,7 +87,6 @@ class InplaceGraphDataset(Dataset):
 def construct_dataset(date_ids, x_data, y_data, graph, ids_columns, ks, horizon, use_temporal_as_edges, isNotmesh=False):
     Xs, Ys, Es = [], [], []
     
-    # Traiter par date
     print(ks, horizon)
     for id in date_ids:
         if use_temporal_as_edges is None:
@@ -156,21 +152,16 @@ def create_dataset(graph,
     logger.info(f'Constructing test Dataset')
     XsTe, YsTe, EsTe = construct_dataset(dateTest, x_test, y_test, graph, ids_columns, ks, horizon, use_temporal_as_edges, graph_mesh is None)
 
-    # Assurez-vous que les ensembles ne sont pas vides
     assert len(Xst) > 0, "Le jeu de données d'entraînement est vide"
     assert len(XsV) > 0, "Le jeu de données de validation est vide"
     assert len(XsTe) > 0, "Le jeu de données de test est vide"
 
     if graph_mesh is None:
-        # Création des datasets finaux
-        print('uzbdkazdkjzan')
         train_dataset = InplaceGraphDataset(Xst, Yst, Est, len(Xst), device)
         val_dataset = InplaceGraphDataset(XsV, YsV, EsV, len(XsV), device)
         test_dataset = InplaceGraphDataset(XsTe, YsTe, EsTe, len(XsTe), device)
-    elif graph_mesh is not None:
-        train_dataset = InplaceMeshGraphDatasetInplace(Xst, Yst, Est, len(Xst), device, graph_mesh, gridh2mesh, mesh2graph)
-        val_dataset = InplaceMeshGraphDatasetInplace(XsV, YsV, EsV, len(XsV), device, graph_mesh, gridh2mesh, mesh2graph)
-        test_dataset = InplaceMeshGraphDatasetInplace(XsTe, YsTe, EsTe, len(XsTe), device, graph_mesh, gridh2mesh, mesh2graph)
+    else:
+        raise ValueError(f'{gridh2mesh} is not a known mesh value')
 
     return train_dataset, val_dataset, test_dataset
 
@@ -197,17 +188,12 @@ def create_train_dataset(graph,
     logger.info(f'Constructing train Dataset')
     Xst, Yst, Est = construct_dataset(dateTrain, x_train, y_train, graph, ids_columns, ks, horizon, use_temporal_as_edges, graph_mesh is None)
 
-    # Assurez-vous que les ensembles ne sont pas vides
     assert len(Xst) > 0, "Le jeu de données d'entraînement est vide"
 
     if graph_mesh is None:
-        # Création des datasets finaux
-        print('uzbdkazdkjzan')
         train_dataset = InplaceGraphDataset(Xst, Yst, Est, len(Xst), device)
-    elif graph_mesh is not None:
-        train_dataset = InplaceMeshGraphDatasetInplace(Xst, Yst, Est, len(Xst), device, graph_mesh, gridh2mesh, mesh2graph)
-    #elif mesh == 'mygraph':
-    #    train_dataset = InplaceMulitpleGraphDataset(target_name, mesh_file, Xst, Yst, Est, len(Xst), device)
+    else:
+        raise ValueError(f'{gridh2mesh} is not a known mesh value')
 
     return train_dataset
 
@@ -239,21 +225,14 @@ def create_test_val_dataset(graph,
     logger.info(f'Constructing test Dataset')
     XsTe, YsTe, EsTe = construct_dataset(dateTest, x_test, y_test, graph, ids_columns, horizon, ks, use_temporal_as_edges, graph_mesh is None)
 
-    # Assurez-vous que les ensembles ne sont pas vides
     assert len(XsV) > 0, "Le jeu de données de validation est vide"
     assert len(XsTe) > 0, "Le jeu de données de test est vide"
 
     if gridh2mesh is None:
-        # Création des datasets finaux
-        print('uzbdkazdkjzan')
         val_dataset = InplaceGraphDataset(XsV, YsV, EsV, len(XsV), device)
         test_dataset = InplaceGraphDataset(XsTe, YsTe, EsTe, len(XsTe), device)
-    elif gridh2mesh is not None:
-        val_dataset = InplaceMeshGraphDatasetInplace(XsV, YsV, EsV, len(XsV), device, graph_mesh, gridh2mesh, mesh2graph)
-        test_dataset = InplaceMeshGraphDatasetInplace(XsTe, YsTe, EsTe, len(XsTe), device, graph_mesh, gridh2mesh, mesh2graph)
-    #elif mesh == 'mygraph':
-    #    val_dataset = InplaceMulitpleGraphDataset(target_name, mesh_file, XsV, YsV, EsV, len(XsV), device)
-    #    test_dataset = InplaceMulitpleGraphDataset(target_name, mesh_file, XsTe, YsTe, EsTe, len(XsTe), device)
+    else:
+        raise ValueError(f'{gridh2mesh} is not a known mesh value')
 
     return val_dataset, test_dataset
 
@@ -336,14 +315,8 @@ def create_test_loader(graph, df,
     if gridh2mesh is None:
         dataset = InplaceGraphDataset(X, Y, E, len(X), device)
         collate = graph_collate_fn
-    elif gridh2mesh is not None:
-        dataset = InplaceMeshGraphDatasetInplace(X, Y, E, len(X), device, graph_mesh, gridh2mesh, mesh2graph)
-        collate = graph_collate_fn_mesh
-    #elif mesh == 'mygraph':
-    #    dataset = InplaceMulitpleGraphDataset(target_name, mesh_file, X, Y, E, len(X), device)
-    #    collate = graph_collate_fn_multiple_graph
     else:
-        raise ValueError(f'{mesh} is not a known mesh value')
+        raise ValueError(f'{gridh2mesh} is not a known mesh value')
 
     if use_temporal_as_edges is None:
         loader = DataLoader(dataset, dataset.__len__(), False, worker_init_fn=seed_worker,
@@ -354,21 +327,6 @@ def create_test_loader(graph, df,
         generator=g)
 
     return loader
-
-class WrapperModel(torch.nn.Module):
-    def __init__(self, original_model, F, T, edges, horizon=0):
-        super().__init__()
-        self.model = original_model
-        self.F = F
-        self.T = T
-        self.edges = edges
-
-        self.horizon = horizon
-
-    def forward(self, x_flat):
-        # reshape x_flat (B, F*T) vers (B, F, T)
-        x_orig = x_flat.reshape(-1, self.F, self.T)
-        return self.model(x_orig, self.edges)
 
 class Training():
     def __init__(self, model_name, nbfeatures, batch_size, lr, target_name, task_type,

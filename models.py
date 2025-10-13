@@ -1056,14 +1056,6 @@ class Training():
 
         criterion = self.get_loss(self.loss)
 
-        static_idx, temporal_idx = get_static_temporal_idx(self.features_name)
-
-        if self.model_name in ['SepGRUGNN']:
-            if custom_model_params is None:
-                custom_model_params = {'static_idx': static_idx, 'temporal_idx' : temporal_idx}
-            else:
-                custom_model_params.update({'static_idx': static_idx, 'temporal_idx' : temporal_idx})
-
         if new_model or self.model is None:
             self.model, _ = self.make_model(graph, custom_model_params)
         

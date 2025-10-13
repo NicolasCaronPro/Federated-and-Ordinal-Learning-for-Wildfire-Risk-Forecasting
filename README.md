@@ -6,7 +6,7 @@ Wildfire services require timely risk indicators that can be trained without rel
 ## Overview
 This repository collects the core loss implementations used in the accompanying study on ordinal wildfire forecasting. The losses support training recurrent models and federated learning strategies that must preserve ordinal structure and handle class imbalance.
 
-- `loss.py` implements ordinal-aware training criteria, including binomial cross-entropy for ordered targets, a foreground dice loss, and the combined MCE + WK objective used in the paper.
+- `loss.py` implements ordinal-aware training criteria, including binomial cross-entropy for ordered targets, and the combined MCE + WK objective used in the paper.
 - `loss_utils.py` provides helper routines for constructing cost matrices and class weights that are reused across experiments.
 - `models.py` contains wrapper for centralize and federated training
 - `architectures.py` contains recurrent architectures such as the gated recurrent unit (GRU) and DilatedCNN.

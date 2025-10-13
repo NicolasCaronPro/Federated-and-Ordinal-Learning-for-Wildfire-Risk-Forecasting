@@ -1,28 +1,28 @@
 import numpy as np
 import pickle
-from Pathlib import path
-from sklearn.metrics import f1_score, recall_score, precision_score
+from pathlib import Path
+from sklearn.metrics import f1_score, recall_score, precision_score, confusion_matrix
 
 def calculate_area_under_curve(y_values):
     """
-    Calcule l'aire sous la courbe pour une série de valeurs données (méthode de trapèze).
+    Compute the area under the curve for a series of values using the trapezoidal rule.
 
-    :param y_values: Valeurs sur l'axe des ordonnées pour calculer l'aire sous la courbe.
-    :return: Aire sous la courbe.
+    :param y_values: Values on the y-axis used to compute the area under the curve.
+    :return: Area under the curve.
     """
     return np.trapz(y_values, dx=1)
 
 def iou_score(y_true, y_pred):
     """
-    Calcule les scores (aire commune, union, sous-prédiction, sur-prédiction) entre deux signaux.
+    Compute the overlap metrics (intersection, union, under-prediction, over-prediction) between two signals.
 
     Args:
-        t (np.array): Tableau de temps ou indices (axe x).
-        y_pred (np.array): Signal prédiction (rouge).
-        y_true (np.array): Signal vérité terrain (bleu).
+        t (np.array): Array of timesteps or indices (x-axis).
+        y_pred (np.array): Prediction signal (red).
+        y_true (np.array): Ground-truth signal (blue).
 
     Returns:
-        dict: Dictionnaire contenant les scores calculés.
+        dict: Dictionary containing the computed scores.
     """
 
     if isinstance(y_pred, DMatrix):
@@ -32,71 +32,70 @@ def iou_score(y_true, y_pred):
         y_true = np.copy(y_true.get_label())
 
     y_pred = np.reshape(y_pred, y_true.shape)
-    # Calcul des différentes aires
-    intersection = np.trapz(np.minimum(y_pred, y_true))  # Aire commune
-    union = np.trapz(np.maximum(y_pred, y_true))         # Aire d'union
+    # Compute the intersection and union areas
+    intersection = np.trapz(np.minimum(y_pred, y_true))  # Shared area
+    union = np.trapz(np.maximum(y_pred, y_true))         # Union area
 
     return intersection / union if union > 0 else 0
 
 def under_prediction_score(y_true, y_pred):
     """
-    Calcule le score de sous-prédiction, c'est-à-dire l'aire correspondant
-    aux valeurs où la prédiction est inférieure à la vérité terrain,
-    normalisée par l'union des deux signaux.
+    Compute the under-prediction score, i.e., the area where the prediction
+    is below the ground truth, normalized by the union of the two signals.
 
     Args:
-        y_true (np.array): Signal vérité terrain.
-        y_pred (np.array): Signal prédiction.
+        y_true (np.array): Ground-truth signal.
+        y_pred (np.array): Prediction signal.
 
     Returns:
-        float: Score de sous-prédiction.
+        float: Under-prediction score.
     """
 
     y_pred = np.reshape(y_pred, y_true.shape)
-    # Calcul de l'aire de sous-prédiction
-    under_prediction_area = np.trapz(np.maximum(y_true - y_pred, 0))  # Valeurs positives où y_true > y_pred
-    
-    # Calcul de l'union (le maximum des deux signaux à chaque point)
-    union_area = np.trapz(np.maximum(y_true, y_pred))  # Union des signaux
+    # Area corresponding to under-predictions
+    under_prediction_area = np.trapz(np.maximum(y_true - y_pred, 0))  # Positive values where y_true > y_pred
+
+    # Union area (maximum of both signals at each point)
+    union_area = np.trapz(np.maximum(y_true, y_pred))  # Union of the signals
     
     return under_prediction_area / union_area if union_area > 0 else 0
 
 def over_prediction_score(y_true, y_pred):
     """
-    Calcule le score de sur-prédiction, c'est-à-dire l'aire correspondant
-    aux valeurs où la prédiction est supérieure à la vérité terrain,
-    normalisée par l'union des deux signaux.
+    Compute the over-prediction score, i.e., the area where the prediction
+    exceeds the ground truth, normalized by the union of the two signals.
 
     Args:
-        y_true (np.array): Signal vérité terrain.
-        y_pred (np.array): Signal prédiction.
+        y_true (np.array): Ground-truth signal.
+        y_pred (np.array): Prediction signal.
 
     Returns:
-        float: Score de sur-prédiction.
+        float: Over-prediction score.
     """
     y_pred = np.reshape(y_pred, y_true.shape)
-    # Calcul de l'aire de sur-prédiction
-    over_prediction_area = np.trapz(np.maximum(y_pred - y_true, 0))  # Valeurs positives où y_pred > y_true
-    
-    # Calcul de l'union (le maximum des deux signaux à chaque point)
-    union_area = np.trapz(np.maximum(y_true, y_pred))  # Union des signaux
+    # Area corresponding to over-predictions
+    over_prediction_area = np.trapz(np.maximum(y_pred - y_true, 0))  # Positive values where y_pred > y_true
+
+    # Union area (maximum of both signals at each point)
+    union_area = np.trapz(np.maximum(y_true, y_pred))  # Union of the signals
     
     return over_prediction_area / union_area if union_area > 0 else 0
 
 def evaluate_metrics(df, y_true_col='target', y_pred=None):
     """
-    Calcule l'IoU et le F1-score sur chaque département, puis calcule l'aire sous la courbe normalisée (aire / aire maximale).
-    
-    :param dff: DataFrame contenant les colonnes ['Department', 'Scale', 'nbsinister', 'target']
-    :param dataset: Nom du dataset à filtrer
-    :param y_true_col: Colonne représentant les cibles réelles
-    :param y_pred: Liste ou tableau des prédictions
-    :param metric: Choix de la métrique ('IoU' ou 'F1')
-    :param top: Nombre de départements à afficher (ou 'all' pour tout afficher)
-    :return: Dictionnaire contenant l'aire normalisée pour chaque modèle.
+    Compute IoU and F1-score for each department, then derive the normalized
+    area under the curve (area / maximum area).
+
+    :param df: DataFrame containing the columns ['Department', 'Scale', 'nbsinister', 'target']
+    :param dataset: Name of the dataset to filter
+    :param y_true_col: Column representing the ground-truth targets
+    :param y_pred: List or array of predictions
+    :param metric: Metric to compute ('IoU' or 'F1')
+    :param top: Number of departments to display (or 'all' to display everything)
+    :return: Dictionary containing the normalized area for each model.
     """
-    
-    # Trier les valeurs par 'nbsinister' décroissant
+
+    # Sort values by 'nbsinister' descending if needed
     #df_sorted = df.sort_values(by='nbsinister', ascending=False)
     df_sorted = df
     if y_pred.ndim > 1:
@@ -118,24 +117,24 @@ def evaluate_metrics(df, y_true_col='target', y_pred=None):
     under = under_prediction_score(y_true, y_pred)
     over = over_prediction_score(y_true, y_pred)
 
-    # Initialiser un dictionnaire pour les résultats
+    # Initialize a dictionary to store results
     results = {'iou' : iou, 'f1' : f1, 'under' : under, 'over' : over, 'prec' : prec, 'recall' : rec,
                'auoc' : auoc, 'f1_macro' : f1_macro, 'prec_macro' : prec_macro, 'rec_macro' : rec_macro}
 
-    # Calculer l'IoU et F1 pour chaque département
+    # Compute IoU and F1 for each department
     IoU_scores = []
     F1_scores = []
     rec_scores = []
     prec_scores = []
     
     for i, department in enumerate(df_sorted['departement'].unique()):
-        # Extraire les valeurs pour chaque département
+        # Extract values for the current department
         y_true = df_sorted[df_sorted['departement'] == department][y_true_col].values
         if np.all(y_true == 0):
             continue
-        y_pred_department = y_pred[df_sorted['departement'] == department]  # Récupérer les prédictions associées au département
-        
-        # Calcul des scores IoU et F1
+        y_pred_department = y_pred[df_sorted['departement'] == department]  # Retrieve the predictions for the department
+
+        # Compute IoU, F1, precision, and recall
         IoU = iou_score(y_true, y_pred_department)
         F1 = f1_score(y_true > 0, y_pred_department > 0, zero_division=0)
         prec = precision_score(y_true > 0, y_pred_department > 0, zero_division=0)
@@ -147,17 +146,17 @@ def evaluate_metrics(df, y_true_col='target', y_pred=None):
         rec_scores.append(rec)
         
     df_sorted_test_area = df_sorted[df_sorted[y_true_col] > 0]
-    # Calcul de l'aire maximale possible (cas parfait où toutes les prédictions sont correctes)
+    # Compute the maximum possible area (perfect predictions)
     max_area = np.trapz(np.ones(len(df_sorted_test_area['departement'].unique())), dx=1)
     
-    # Calcul de l'aire sous la courbe pour l'IoU et le F1
+    # Area under the curve for IoU, F1, precision, and recall
     IoU_area = calculate_area_under_curve(IoU_scores)
     F1_area = calculate_area_under_curve(F1_scores)
 
     prec_area = calculate_area_under_curve(prec_scores)
     rec_area = calculate_area_under_curve(rec_scores)
 
-    # Normalisation par l'aire maximale
+    # Normalize by the maximum area
     normalized_IoU = IoU_area / max_area if max_area > 0 else 0
     normalized_F1 = F1_area / max_area if max_area > 0 else 0
     normalized_rec = rec_area / max_area if max_area > 0 else 0
@@ -165,7 +164,7 @@ def evaluate_metrics(df, y_true_col='target', y_pred=None):
     
     y_true = df[y_true_col]
     
-    # Stocker les résultats dans le dictionnaire
+    # Save normalized scores in the results dictionary
     results['normalized_iou'] = normalized_IoU
     results['normalized_f1'] = normalized_F1
 
@@ -207,9 +206,9 @@ def evaluate_metrics(df, y_true_col='target', y_pred=None):
 
 def update_metrics_as_arrays(self, tp, metrics_run, set):
     """
-    Met à jour self.metrics[tp] en stockant des tableaux NumPy.
-    Pour chaque (k, v) dans metrics_run, on alimente la clé f"{k}_val".
-    - v peut être un scalaire ou un array/list -> converti en 1D via np.atleast_1d.
+    Update self.metrics[tp] by storing NumPy arrays.
+    For each (k, v) in metrics_run, populate the key f"{k}_val".
+    - v can be a scalar or an array/list -> converted to 1D via np.atleast_1d.
     """
     bucket = self.metrics.setdefault(tp, {})
     for k, v in metrics_run.items():
@@ -217,10 +216,10 @@ def update_metrics_as_arrays(self, tp, metrics_run, set):
         v_arr = np.atleast_1d(v).astype(float)
 
         if key not in bucket:
-            # Première insertion -> tableau directement
+            # First insertion -> store the array directly
             bucket[key] = v_arr.copy()
         else:
-            # Concaténation avec l'existant
+            # Concatenate with existing values
             bucket[key] = np.concatenate([bucket[key], v_arr])
 
 from typing import Dict, Any, Iterable, Optional
@@ -234,32 +233,32 @@ def add_ic95_to_dict(
     overwrite: bool = True,
 ) -> Dict[str, Any]:
     """
-    Pour chaque clé 'metric' de d (ou sous-ensemble 'keys'), calcule l'IC95
-    via calculate_ic95(d[metric]) et stocke un tuple (lower, upper) sous
-    'metric{suffix}' (ex.: 'f1_ic95').
+    For each 'metric' key in d (or subset 'keys'), compute the 95% confidence
+    interval via calculate_ic95(d[metric]) and store a tuple (lower, upper) under
+    'metric{suffix}' (e.g., 'f1_ic95').
 
-    Hypothèses:
-    - d[metric] est une séquence numérique (list/tuple/ndarray) de valeurs (runs, sous-samples, etc.)
-    - La fonction calculate_ic95(array_like) existe et renvoie (lower, upper)
+    Assumptions:
+    - d[metric] is a numerical sequence (list/tuple/ndarray) of values (runs, sub-samples, etc.)
+    - The function calculate_ic95(array_like) exists and returns (lower, upper)
 
-    Paramètres
+    Parameters
     ----------
     d : dict
-        Dictionnaire des métriques => séquences de valeurs.
-    keys : itérable de str, optionnel
-        Si fourni, ne traite que ces clés. Sinon, toutes les clés sauf celles finissant par `suffix`.
+        Dictionary of metrics mapped to sequences of values.
+    keys : iterable of str, optional
+        If provided, only process these keys. Otherwise, process all keys except those ending with `suffix`.
     suffix : str
-        Suffixe pour la clé IC95 (par défaut "_ic95").
+        Suffix for the confidence interval key (default "_ic95").
     dropna : bool
-        Si True, ignore les NaN avant le calcul.
+        If True, ignore NaNs before computing the interval.
     overwrite : bool
-        Si False, n’écrase pas une clé '{metric}{suffix}' déjà existante.
+        If False, do not overwrite an existing '{metric}{suffix}' key.
 
-    Retour
-    ------
-    dict (même objet) enrichi de paires '{metric}{suffix}': (lower, upper).
+    Returns
+    -------
+    dict (same object) enriched with '{metric}{suffix}': (lower, upper) pairs.
     """
-    # Sélection des clés candidates
+    # Select candidate keys
     if keys is None:
         candidates = [k for k in d.keys() if not k.endswith(suffix)]
     else:
@@ -270,17 +269,17 @@ def add_ic95_to_dict(
         if vals is None:
             continue
 
-        # Convertir en tableau 1D de floats
+        # Convert to a 1D float array
         arr = np.asarray(vals, dtype=float).ravel()
         if dropna:
             arr = arr[~np.isnan(arr)]
 
-        # Besoin d'au moins 2 points pour un IC95 basé sur SD
+        # Need at least two points for an SD-based confidence interval
         if arr.size < 2:
             d[f"{k}{suffix}"] = (np.nan, np.nan)
             continue
 
-        # Appel à la fonction externe calculate_ic95
+        # Call the external calculate_ic95 function
         try:
             lower, upper = calculate_ic95(arr)
             lower = float(lower)
@@ -298,19 +297,19 @@ from typing import Any
 
 def round_floats(obj: Any, ndigits: int = 2, round_keys: bool = False) -> Any:
     """
-    Arrondit tous les float rencontrés dans une structure Python (dict, list, tuple, set),
-    et renvoie une nouvelle structure du même type.
-    
-    - obj: structure d'entrée (dict, list, tuple, set, scalaires)
-    - ndigits: nombre de décimales (par défaut 2)
-    - round_keys: si True, arrondit aussi les *clés* de type float dans les dicts
-                  (attention aux collisions possibles de clés après arrondi)
+    Round every float encountered in a Python structure (dict, list, tuple, set)
+    and return a new structure of the same type.
+
+    - obj: input structure (dict, list, tuple, set, scalars)
+    - ndigits: number of decimal places (default 2)
+    - round_keys: if True, also round float *keys* in dictionaries
+                  (beware of potential key collisions after rounding)
     """
-    # float -> on arrondit
+    # Floats -> round directly
     if isinstance(obj, float):
         return round(obj, ndigits)
 
-    # dict -> on traite clés/valeurs
+    # Dict -> process keys and values
     if isinstance(obj, dict):
         new_dict = {}
         for k, v in obj.items():
@@ -318,19 +317,19 @@ def round_floats(obj: Any, ndigits: int = 2, round_keys: bool = False) -> Any:
             new_dict[new_k] = round_floats(v, ndigits, round_keys)
         return new_dict
 
-    # list -> on traite chaque élément
+    # List -> process each element
     if isinstance(obj, list):
         return [round_floats(x, ndigits, round_keys) for x in obj]
 
-    # tuple -> on traite chaque élément et on recompose un tuple
+    # Tuple -> process each element and rebuild a tuple
     if isinstance(obj, tuple):
         return tuple(round_floats(x, ndigits, round_keys) for x in obj)
 
-    # set -> on traite chaque élément (attention: l'arrondi peut fusionner des éléments)
+    # Set -> process each element (rounding may merge elements)
     if isinstance(obj, set):
         return {round_floats(x, ndigits, round_keys) for x in obj}
 
-    # autre type (int, str, bool, None, etc.) -> inchangé
+    # Other types (int, str, bool, None, etc.) -> unchanged
     return obj
 
 def auoc_func(conf_matrix: np.ndarray, n_beta: int = 1001) -> float:
@@ -423,7 +422,7 @@ def auoc_func(conf_matrix: np.ndarray, n_beta: int = 1001) -> float:
 
 def check_and_create_path(path: Path):
     """
-    Create a directotry if it does not exist
+    Create a directory if it does not exist.
     """
     path_way = path.parent if path.is_file() else path
 
@@ -432,13 +431,13 @@ def check_and_create_path(path: Path):
     if not path.exists():
         path.touch()
 
-  def read_object(filename: str, path : Path):
+def read_object(filename: str, path: Path):
     if not (path / filename).is_file():
         print(f'{path / filename} not found')
         return None
     return pickle.load(open(path / filename, 'rb'))
 
-def save_object(obj, filename: str, path : Path):
+def save_object(obj, filename: str, path: Path):
     check_and_create_path(path)
     with open(path / filename, 'wb') as outp:  # Overwrites any existing file.
         pickle.dump(obj, outp, pickle.HIGHEST_PROTOCOL)

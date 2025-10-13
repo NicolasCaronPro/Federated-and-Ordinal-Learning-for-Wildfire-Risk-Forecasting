@@ -10,6 +10,7 @@ This repository collects the core loss implementations used in the accompanying 
 - `loss_utils.py` provides helper routines for constructing cost matrices and class weights that are reused across experiments.
 - `models.py` contains wrapper for centralize and federated training
 - `architectures.py` contains recurrent architectures such as the gated recurrent unit (GRU) and DilatedCNN.
+- `tools.py` gathers evaluation helpers, including IoU/F1 aggregation, AUOC computation for ordinal confusion matrices, rounding utilities, and simple serialization helpers used across experiments.
 
 ## Usage
 The loss classes are written for PyTorch-based workflows. Import the desired loss from `loss.py`, instantiate it with the number of classes used in your ordinal prediction task, and integrate it into your training loop. The helper utilities in `loss_utils.py` simplify building weighting schemes that reflect ordinal distances between classes.

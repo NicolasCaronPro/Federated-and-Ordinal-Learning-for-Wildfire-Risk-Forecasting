@@ -9,6 +9,7 @@ This repository collects the core loss implementations used in the accompanying 
 - `loss.py` implements ordinal-aware training criteria, including binomial cross-entropy for ordered targets, a foreground dice loss, and the combined MCE + WK objective used in the paper.
 - `loss_utils.py` provides helper routines for constructing cost matrices and class weights that are reused across experiments.
 - `models.py` contains wrapper for centralize and federated training
+- `architectures.py` contains recurrent architectures such as the gated recurrent unit (GRU) and DilatedCNN.
 
 ## Usage
 The loss classes are written for PyTorch-based workflows. Import the desired loss from `loss.py`, instantiate it with the number of classes used in your ordinal prediction task, and integrate it into your training loop. The helper utilities in `loss_utils.py` simplify building weighting schemes that reflect ordinal distances between classes.

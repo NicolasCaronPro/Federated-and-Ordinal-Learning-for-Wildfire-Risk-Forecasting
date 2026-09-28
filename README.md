@@ -24,6 +24,11 @@ Two further modules support the pipeline:
 - `loss.py` holds other ordinal criteria: all-threshold BCE, foreground Dice, and MCE + WK.
 - `tools.py` holds generic helpers: IoU, confidence intervals and serialization.
 
+## Related repositories
+
+- **Database:** [Localized Forest Fire Risk Prediction: A Department-Aware Approach for Operational Decision Support](https://github.com/NicolasCaronPro/Localized-Forest-Fire-Risk-Prediction-ADepartment-Aware-Approach-for-Operational-DecisionSupport). It covers the construction of the departmental dataset from BDIFF and the covariates.
+- **Monotonic evaluation:** [Risk Is Not the Target: A Monotonic Framework for Evaluating Wildfire Operational Risk Signals](https://github.com/NicolasCaronPro/Risk-Is-Not-the-Target-A-Monotonic-Framework-for-Evaluating-Wildfire-Operational-Risk-Signals). It is the reference implementation of the k1–k4 framework used in Section 5.
+
 ## Method summary
 
 **Labels.**
@@ -76,7 +81,7 @@ python example_synthetic.py --algorithm fedala --server-rule weighted --partitio
 python example_synthetic.py --algorithm moon --server-rule fltg --partition mediterranean --backbone DilatedCNN
 ```
 
-The BDIFF-derived feature tables are not distributed. To run the pipeline on your own data:
+The BDIFF-derived feature tables are not distributed here; see the [database repository](https://github.com/NicolasCaronPro/Localized-Forest-Fire-Risk-Prediction-ADepartment-Aware-Approach-for-Operational-DecisionSupport) to build them. To run the pipeline on your own data:
 
 1. Prepare a daily table with one row per department and date. It needs the columns `departement`, `date`, the fire count `nbsinister`, and the features.
 2. Reproduce the steps of `example_synthetic.py`:

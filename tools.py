@@ -3,6 +3,13 @@ import pickle
 from pathlib import Path
 from sklearn.metrics import f1_score, recall_score, precision_score, confusion_matrix
 
+def calculate_ic95(data):
+    """95% confidence interval of the mean (normal approximation)."""
+    data = np.asarray(data, dtype=float)
+    mean = np.mean(data)
+    std_err = np.std(data, ddof=1) / np.sqrt(len(data))
+    return mean - 1.96 * std_err, mean + 1.96 * std_err
+
 def calculate_area_under_curve(y_values):
     """
     Compute the area under the curve for a series of values using the trapezoidal rule.
@@ -25,13 +32,8 @@ def iou_score(y_true, y_pred):
         dict: Dictionary containing the computed scores.
     """
 
-    if isinstance(y_pred, DMatrix):
-        y_pred = np.copy(y_pred.get_data().toarray())
-
-    if isinstance(y_true, DMatrix):
-        y_true = np.copy(y_true.get_label())
-
-    y_pred = np.reshape(y_pred, y_true.shape)
+    y_true = np.asarray(y_true, dtype=float)
+    y_pred = np.reshape(np.asarray(y_pred, dtype=float), y_true.shape)
     # Compute the intersection and union areas
     intersection = np.trapz(np.minimum(y_pred, y_true))  # Shared area
     union = np.trapz(np.maximum(y_pred, y_true))         # Union area
@@ -223,7 +225,6 @@ def update_metrics_as_arrays(self, tp, metrics_run, set):
             bucket[key] = np.concatenate([bucket[key], v_arr])
 
 from typing import Dict, Any, Iterable, Optional
-import numpy as np
 
 def add_ic95_to_dict(
     d: Dict[str, Any],

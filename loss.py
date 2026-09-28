@@ -1,10 +1,12 @@
-import sys
-sys.path.insert(0,'/home/caron/Bureau/Model/HexagonalScale/ST-GNN-for-wildifre-prediction/Prediction/GNN/')
-
+import torch
+import torch.nn as nn
 import torch.nn.functional as F
+import matplotlib.pyplot as plt
+from torch import Tensor
 from typing import Optional
-from forecasting_models.pytorch.tools_2 import *
-from forecasting_models.pytorch.loss_utils import *
+
+from loss_utils import WKLoss, MCELoss
+from tools import save_object
 
 ###################################### Ordinality ##########################################
 

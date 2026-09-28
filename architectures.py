@@ -1,10 +1,10 @@
-import sys
-import os
+"""Temporal backbones (Section 4.3): a two-layer GRU and a dilated temporal CNN.
 
-from dgl.nn.pytorch.conv import GraphConv, GATConv
-from torch_geometric.nn import GraphNorm, global_mean_pool, global_max_pool
-from torch.nn import ReLU, GELU
-import math
+Both take inputs of shape (batch, features, time) and return
+``(probabilities, logits, hidden)``; ``hidden`` is the representation used by MOON.
+"""
+
+import torch
 
 class GRU(torch.nn.Module):
     def __init__(self, in_channels, gru_size, hidden_channels, end_channels, n_sequences, device,
@@ -273,3 +273,23 @@ class DilatedCNN(torch.nn.Module):
 
         return self.decoder(decoder_input)
         
+
+
+def build_model(name, in_dim, lookback=10, out_channels=5, device='cpu', dropout=0.03, act_func='ReLU'):
+    """Instantiate a backbone with the settings of Section 4.3.
+
+    GRU: two recurrent layers, dropout 0.03, batch normalisation, dx -> 256 -> 64 -> 5 head.
+    DilatedCNN: kernel-3 dilated convolutions with replicate padding and a dL -> 64 -> 64 -> 5 head;
+    the convolutional widths and dilations are not reported in the article, the values below
+    are those of the configuration files. ``lookback`` days of history plus the current day
+    give ``lookback + 1`` time steps.
+    """
+    if name == 'GRU':
+        return GRU(in_channels=in_dim, gru_size=128, hidden_channels=256, end_channels=64,
+                   n_sequences=lookback + 1, device=device, act_func=act_func, task_type='classification',
+                   dropout=dropout, num_layers=2, return_hidden=True, out_channels=out_channels)
+    if name == 'DilatedCNN':
+        return DilatedCNN(channels=[in_dim, in_dim, 128], dilations=[1, 3, 4], lin_channels=64, end_channels=64,
+                          n_sequences=lookback + 1, device=device, act_func=act_func, dropout=dropout,
+                          out_channels=out_channels, task_type='classification', return_hidden=True)
+    raise ValueError(f'Unknown backbone {name!r}; expected GRU or DilatedCNN.')
